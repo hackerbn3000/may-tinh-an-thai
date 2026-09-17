@@ -53,7 +53,6 @@
 
   /* ── LAYOUT ── */
   #app { display:none; flex:1; overflow:hidden; width:100%; }
-  /* Sidebar chỉ hiện khi đã đăng nhập */
   body:not(.app-ready) .sidebar { display:none !important; }
   .sidebar {
     width:var(--sidebar-w); background:#0f1b35; height:100vh;
@@ -193,8 +192,8 @@
   .cart-item-price { margin-left:auto; font-size:13px; font-weight:700; color:var(--blue); }
   .cart-item-unit { font-size:11px; color:var(--text-3); }
   .btn-remove { background:none; border:none; cursor:pointer; color:var(--red); font-size:16px; margin-left:4px; }
-  .cart-summary { padding:14px 16px; border-top:1px solid var(--border); }
-  .summary-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; color:var(--text-2); }
+  .cart-summary { padding:14px 16px; border-top:1px solid var(--border); max-height: 48%; overflow-y: auto; }
+  .summary-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; color:var(--text-2); align-items: center; }
   .summary-total { font-size:18px; font-weight:700; color:var(--text); }
   .customer-select { padding:10px 14px; border-bottom:1px solid var(--border); }
 
@@ -321,6 +320,9 @@
       <button class="nav-item" onclick="navigate(&#39;orders&#39;)">
         <span class="icon">📋</span> Lịch sử đơn
       </button>
+      <button class="nav-item" onclick="navigate(&#39;import_history&#39;)">
+        <span class="icon">📜</span> Lịch sử nhập hàng
+      </button>
       <button class="nav-item" onclick="navigate(&#39;returns&#39;)">
         <span class="icon">↩️</span> Lịch sử trả hàng
       </button>
@@ -347,7 +349,7 @@
     </nav>
     <div class="sidebar-footer">
       <div class="user-info">
-        <img id="user-avatar" class="user-avatar" src="file:///C:/Users/TVH%20386/Downloads/index_3.html" onerror="this.style.display=&#39;none&#39;" alt="" style="display: none;">
+        <img id="user-avatar" class="user-avatar" src="" onerror="this.style.display=&#39;none&#39;" alt="" style="display: none;">
         <span id="user-name" class="user-name">Đang tải...</span>
         <button class="btn-logout" onclick="signOut()" title="Đăng xuất">⏻</button>
       </div>
@@ -587,12 +589,12 @@ window.navigate = (page) => {
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   const titles = {
-    dashboard:'Tổng quan', sell:'Bán hàng', orders:'Lịch sử đơn hàng', returns:'Lịch sử trả hàng',
+    dashboard:'Tổng quan', sell:'Bán hàng', orders:'Lịch sử đơn hàng', import_history:'Lịch sử nhập hàng', returns:'Lịch sử trả hàng',
     inventory:'Quản lý tồn kho', import:'Nhập hàng', catalog:'Danh sách hàng hóa',
     customers:'Khách hàng', suppliers:'Nhà cung cấp', warranty:'Tra cứu bảo hành'
   };
   document.getElementById('page-title').textContent = titles[page] || page;
-  const navMap = {dashboard:0, sell:1, orders:2, returns:3, inventory:4, import:5, catalog:6, customers:7, suppliers:8, warranty:9};
+  const navMap = {dashboard:0, sell:1, orders:2, import_history:3, returns:4, inventory:5, import:6, catalog:7, customers:8, suppliers:9, warranty:10};
   const navItems = document.querySelectorAll('.nav-item');
   if (navMap[page] !== undefined) navItems[navMap[page]]?.classList.add('active');
 
@@ -604,6 +606,7 @@ window.navigate = (page) => {
     dashboard: renderDashboard,
     sell: renderSell,
     orders: renderOrders,
+    import_history: renderStandaloneImportHistory,
     returns: renderReturns,
     inventory: renderInventory,
     import: renderImport,
@@ -795,7 +798,7 @@ function renderDashboard(content, actions) {
       </tbody></table>
     </div>
     <div class="table-wrap">
-      <div class="table-header"><span class="table-title">📥 Lịch sử nhập hàng gần nhất</span><button class="btn btn-outline btn-sm" onclick="navigate('import')">Nhập hàng</button></div>
+      <div class="table-header"><span class="table-title">📥 Lịch sử nhập hàng gần nhất</span><button class="btn btn-outline btn-sm" onclick="navigate('import_history')">Xem tất cả</button></div>
       <table><thead><tr><th>Thời gian</th><th>Nhà cung cấp</th><th style="text-align:center">Số SP</th><th style="text-align:right">Tổng nhập</th></tr></thead>
       <tbody>${Object.entries(allImportReceipts).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0)).slice(0,4).map(([rk,r])=>`
         <tr style="cursor:pointer" onclick="viewImportReceipt('${rk}')">
@@ -1096,7 +1099,7 @@ window.editProduct = (key) => {
   document.getElementById('p-group').value = p.group||p.category||'';
   document.getElementById('p-key').value = key;
 
-  // ── Lịch sử sản phẩm ──
+  // Lịch sử sản phẩm
   const salesRows = Object.values(allOrders)
     .filter(o => (o.items||[]).some(i => i.key === key))
     .sort((a,b) => (b.createdAt||0) - (a.createdAt||0))
@@ -1251,6 +1254,9 @@ function renderSell(content) {
         <div class="summary-row text-success" id="cart-change-row" style="display:none">
           <span>Tiền thừa</span><span id="cart-change" style="font-weight:700"></span>
         </div>
+        <div style="margin-top:8px">
+          <textarea id="cart-note" rows="2" style="width:100%;resize:none;padding:6px 8px;font-size:12px;border-radius:6px;border:1px solid var(--border)" placeholder="📝 Ghi chú đơn hàng (nếu có)..."></textarea>
+        </div>
         <button class="btn btn-success" style="width:100%;margin-top:10px;padding:12px;font-size:15px" onclick="createOrder()">
           ✅ Tạo đơn hàng
         </button>
@@ -1317,7 +1323,7 @@ window.searchCustomerSuggest = (q) => {
       <div style="width:30px;height:30px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--blue-dark);flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;color:var(--text)">${c.name}</div>
-        <div style="font-size:11px;color:var(--text-3)">${c.phone||'Chưa có SĐT'}${(c.debt||0)>0?' · Nợ: <span style="color:var(--red);font-weight:600">'+fmt(c.debt)+'</span>':''}</div>
+        <div style="font-size:11px;color:var(--text-3)">${c.phone||'Chưa có SĐT'}${c.debt>0?' · Nợ: <span style="color:var(--red);font-weight:600">'+fmt(c.debt)+'</span>':''}</div>
       </div>
     </div>`).join('') +
     `<div style="padding:8px 14px;font-size:12px;color:var(--blue);cursor:pointer;text-align:center;font-weight:600" onclick="openAddCustomer()">+ Thêm khách hàng mới</div>`;
@@ -1331,7 +1337,7 @@ window.selectCustomerFromSuggest = (key) => {
   const sel = document.getElementById('cart-customer-selected');
   const lbl = document.getElementById('cart-customer-label');
   if(inp) inp.value = '';
-  if(lbl) lbl.innerHTML = `👤 ${c.name}${c.phone?' · '+c.phone:''}${(c.debt||0)>0?' · <span style="color:var(--red)">Nợ: '+fmt(c.debt)+'</span>':''}`;
+  if(lbl) lbl.innerHTML = `👤 ${c.name}${c.phone?' · '+c.phone:''}${c.debt>0?' · <span style="color:var(--red)">Nợ: '+fmt(c.debt)+'</span>':''}`;
   if(sel) { sel.style.display='flex'; }
   const box = document.getElementById('customer-suggest');
   if(box) box.style.display='none';
@@ -1416,12 +1422,14 @@ window.createOrder = async () => {
   if (!cart.length) { toast('Chưa có sản phẩm trong đơn','error'); return; }
   const total = cart.reduce((s,i)=>s+i.price*i.qty,0) - (parseInt(document.getElementById('cart-discount')?.value)||0);
   const paid = parseInt(document.getElementById('cart-paid')?.value)||total;
+  const note = document.getElementById('cart-note')?.value.trim() || '';
   const now = Date.now();
   const code = 'HD' + new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'2-digit'}).replace(/\//g,'') + '-' + now.toString().slice(-9);
 
   const order = {
     code, createdAt: now, total: Math.max(0,total), paid,
     discount: parseInt(document.getElementById('cart-discount')?.value)||0,
+    note,
     customerKey: selectedCustomer?._key||'',
     customerName: selectedCustomer?.name||'Khách lẻ',
     customerPhone: selectedCustomer?.phone||'',
@@ -1455,7 +1463,7 @@ function renderOrders(content, actions) {
   ordPage = 1;
   actions.innerHTML = `
     <div class="flex-gap">
-      <div class="search-box"><input type="search" id="ord-search" placeholder="Mã đơn, khách hàng..." style="width:220px" oninput="filterOrders()"></div>
+      <div class="search-box"><input type="search" id="ord-search" placeholder="Mã đơn, khách hàng, ghi chú..." style="width:220px" oninput="filterOrders()"></div>
       <input type="date" id="ord-date" onchange="filterOrders()" style="font-size:13px">
     </div>`;
   content.innerHTML = `<div id="ord-table-wrap"></div>`;
@@ -1466,7 +1474,7 @@ window.filterOrders = () => {
   const q = (document.getElementById('ord-search')?.value||'').toLowerCase();
   const d = document.getElementById('ord-date')?.value;
   let orders = Object.entries(allOrders).filter(([k,o])=>{
-    if(q && !(o.code||'').toLowerCase().includes(q) && !(o.customerName||'').toLowerCase().includes(q)) return false;
+    if(q && !(o.code||'').toLowerCase().includes(q) && !(o.customerName||'').toLowerCase().includes(q) && !(o.note||'').toLowerCase().includes(q)) return false;
     if(d){const od=new Date(o.createdAt).toISOString().slice(0,10); if(od!==d) return false;}
     return true;
   }).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
@@ -1485,7 +1493,7 @@ window.filterOrders = () => {
   <div class="table-wrap">
     <div class="table-header"><span class="table-title">Lịch sử đơn hàng</span><span class="text-muted" style="font-size:12px">${fmtN(total)} đơn</span></div>
     <table>
-      <thead><tr><th>Mã đơn</th><th>Thời gian</th><th>Khách hàng</th><th>SĐT</th><th style="text-align:right">Tổng tiền</th><th>Sản phẩm</th><th style="text-align:center">Thao tác</th></tr></thead>
+      <thead><tr><th>Mã đơn</th><th>Thời gian</th><th>Khách hàng</th><th>SĐT</th><th>Ghi chú</th><th style="text-align:right">Tổng tiền</th><th>Sản phẩm</th><th style="text-align:center">Thao tác</th></tr></thead>
       <tbody>
         ${slice.map(([k,o])=>`
         <tr onclick="viewOrder('${k}')" style="cursor:pointer">
@@ -1493,12 +1501,13 @@ window.filterOrders = () => {
           <td style="font-size:12px;color:var(--text-3)">${fmtDate(o.createdAt)}</td>
           <td>${o.customerName||'Khách lẻ'}</td>
           <td style="font-size:12px">${o.customerPhone||'--'}</td>
+          <td style="font-size:12px;color:var(--text-3);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.note||'--'}</td>
           <td style="text-align:right" class="price-tag">${fmt(o.total)}</td>
           <td style="font-size:12px;color:var(--text-3)">${(o.items||[]).length} sản phẩm</td>
           <td style="text-align:center">
             <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();viewOrder('${k}')">👁 Xem</button>
           </td>
-        </tr>`).join('')||'<tr><td colspan="7" class="empty-state">Chưa có đơn hàng nào</td></tr>'}
+        </tr>`).join('')||'<tr><td colspan="8" class="empty-state">Chưa có đơn hàng nào</td></tr>'}
       </tbody>
     </table>
     <div class="pagination">
@@ -1523,10 +1532,11 @@ function showOrderDetail(o, key) {
   <div style="font-size:12px;color:var(--text-3);margin-bottom:14px">
     <b style="font-size:14px;color:var(--text)">${o.code||'--'}</b> · ${fmtDate(o.createdAt)}
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:13px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:13px">
     <div><b>Khách hàng:</b> ${o.customerName||'Khách lẻ'}</div>
     <div><b>SĐT:</b> ${o.customerPhone||'--'}</div>
   </div>
+  ${o.note ? `<div style="font-size:12px;background:var(--bg);padding:8px 12px;border-radius:6px;margin-bottom:12px;color:var(--text-2)"><b>📝 Ghi chú:</b> ${o.note}</div>` : ''}
   <table style="width:100%;border-collapse:collapse;font-size:13px">
     <thead><tr style="background:var(--bg)">
       <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border)">Sản phẩm</th>
@@ -1715,6 +1725,10 @@ window.editOrderModal = function() {
     + '<div><label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:4px">Khách trả (đ)</label>'
     + '<input type="number" id="edit-paid" value="' + (o.paid||o.total||0) + '" style="width:100%;padding:6px 10px;font-size:13px"></div>'
     + '</div>'
+    + '<div style="margin-bottom:10px">'
+    + '<label style="font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:4px">Ghi chú đơn hàng</label>'
+    + '<textarea id="edit-note" rows="2" style="width:100%;padding:6px 10px;font-size:13px;resize:none">' + (o.note||'') + '</textarea>'
+    + '</div>'
     + '<div id="edit-order-total" style="text-align:right;font-size:14px;font-weight:700;color:var(--blue);padding:8px 0;border-top:1px solid var(--border)"></div>';
 
   renderEditItemsList();
@@ -1825,8 +1839,10 @@ window.saveEditOrder = async function() {
   if (!window._editItems.length) { toast('Đơn phải có ít nhất 1 sản phẩm', 'error'); return; }
   var discEl = document.getElementById('edit-discount');
   var paidEl = document.getElementById('edit-paid');
+  var noteEl = document.getElementById('edit-note');
   var discount = discEl ? (parseInt(discEl.value)||0) : 0;
   var paid = paidEl ? (parseInt(paidEl.value)||0) : 0;
+  var note = noteEl ? noteEl.value.trim() : '';
   var custKey = window._editCustKey || '';
   var sub = window._editItems.reduce(function(s, item) { return s + item.price * item.qty; }, 0);
   var total = Math.max(0, sub - discount);
@@ -1834,7 +1850,7 @@ window.saveEditOrder = async function() {
   var custPhone = (custKey && allCustomers[custKey]) ? (allCustomers[custKey].phone||'') : '';
   var updatedOrder = Object.assign({}, o, {
     items: window._editItems.map(function(item) { return Object.assign({}, item, {subtotal: item.price * item.qty}); }),
-    discount: discount, paid: paid, total: total,
+    discount: discount, paid: paid, total: total, note: note,
     customerKey: custKey, customerName: custName, customerPhone: custPhone,
     lastEdited: Date.now()
   });
@@ -1852,8 +1868,8 @@ function restoreOrderModalFooter() {
   if (!footer) return;
   var isImport = !!currentViewingImportKey;
   footer.innerHTML =
-    '<button class="btn btn-outline" onclick="printOrder()">\ud83d\uddb6\ufe0f In</button>'
-    + '<button class="btn btn-primary btn-sm" id="modal-order-edit-btn" onclick="' + (isImport ? 'editImportModal' : 'editOrderModal') + '()" style="display:inline-flex">\u270f\ufe0f ' + (isImport ? 'Sửa phiếu' : 'Sửa đơn') + '</button>'
+    '<button class="btn btn-outline" onclick="printOrder()">🖨️ In</button>'
+    + '<button class="btn btn-primary btn-sm" id="modal-order-edit-btn" onclick="' + (isImport ? 'editImportModal' : 'editOrderModal') + '()" style="display:inline-flex">✏️ ' + (isImport ? 'Sửa phiếu' : 'Sửa đơn') + '</button>'
     + '<button class="btn btn-outline" onclick="closeModal(\'modal-order\')">Đóng</button>';
 }
 
@@ -2116,6 +2132,24 @@ function renderImport(content, actions) {
   renderImportPage(content, actions);
 }
 
+function renderStandaloneImportHistory(content, actions) {
+  actions.innerHTML = `<button class="btn btn-primary" onclick="navigate('import')">➕ Nhập hàng mới</button>`;
+  content.innerHTML = `
+  <div class="flex-gap" style="margin-bottom:14px;flex-wrap:wrap">
+    <div class="tabs" id="imph-tabs" style="margin-bottom:0;border-bottom:none">
+      <button class="tab" data-period="week" onclick="setImpHistPeriod('week')">Tuần này</button>
+      <button class="tab active" data-period="month" onclick="setImpHistPeriod('month')">Tháng này</button>
+      <button class="tab" data-period="all" onclick="setImpHistPeriod('all')">Tất cả</button>
+    </div>
+    <input type="date" id="imph-from" style="font-size:13px" onchange="setImpHistCustom()">
+    <span style="color:var(--text-3);align-self:center">→</span>
+    <input type="date" id="imph-to" style="font-size:13px" onchange="setImpHistCustom()">
+    <div class="search-box" style="flex:1;min-width:180px"><input type="search" id="imph-search" placeholder="🔍 Tìm nhanh theo NCC, người bán, ghi chú..." style="width:100%" oninput="filterImportHistory()"></div>
+  </div>
+  <div id="imph-wrap"></div>`;
+  filterImportHistory();
+}
+
 window.switchImportView = (mode) => {
   importViewMode = mode;
   renderImportPage(document.getElementById('main-content'), document.getElementById('topbar-actions'));
@@ -2129,7 +2163,7 @@ function renderImportPage(content, actions) {
 function renderImportCreate(content, actions) {
   actions.innerHTML = `
     <div class="flex-gap">
-      <button class="btn btn-outline" onclick="switchImportView('history')">📜 Lịch sử nhập hàng</button>
+      <button class="btn btn-outline" onclick="navigate('import_history')">📜 Lịch sử nhập hàng</button>
       <button class="btn btn-primary" onclick="createImportReceipt()">✅ Lưu phiếu nhập</button>
     </div>`;
   const suppOptions = [
@@ -2701,11 +2735,12 @@ window.saveEditImport = async function() {
   viewImportReceipt(key);
   restoreOrderModalFooter();
   if (currentPage === 'import') renderImportPage(document.getElementById('main-content'), document.getElementById('topbar-actions'));
+  else if (currentPage === 'import_history') filterImportHistory();
 };
-let catalogView = 'list'; // 'grid' | 'list'
+let catalogView = 'list';
 let catalogPage = 1; const catalogPerPage = 48;
-let catalogSelectedGroup = ''; // '' = tất cả
-let allGroups = {}; // { key: { name, icon } } từ Firebase
+let catalogSelectedGroup = '';
+let allGroups = {};
 
 const DEFAULT_GROUPS = ['CPU','RAM','Mainboard','VGA','SSD','HDD','Nguồn','Case','Màn hình','Bàn Phím','Chuột','Tai Nghe','LAPTOP','Phụ Kiện','Hàng mới nhập'];
 
