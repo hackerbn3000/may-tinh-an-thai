@@ -389,7 +389,7 @@
         <div class="form-group"><label>Nhóm</label>
           <select id="p-group">
             <option value="">-- Chọn nhóm --</option>
-            <option>Hàng mới nhập</option><option>CPU</option><option>RAM</option>
+            <option>Hàng Cũ</option><option>CPU</option><option>RAM</option>
             <option>Mainboard</option><option>VGA</option><option>SSD</option>
             <option>HDD</option><option>Nguồn</option><option>Case</option>
             <option>Màn hình</option><option>Bàn Phím</option><option>Chuột</option>
@@ -2741,7 +2741,7 @@ let catalogPage = 1; const catalogPerPage = 48;
 let catalogSelectedGroup = '';
 let allGroups = {};
 
-const DEFAULT_GROUPS = ['CPU','RAM','Mainboard','VGA','SSD','HDD','Nguồn','Case','Màn hình','Bàn Phím','Chuột','Tai Nghe','LAPTOP','Phụ Kiện','Hàng mới nhập'];
+const DEFAULT_GROUPS = ['CPU','RAM','Mainboard','VGA','SSD','HDD','Nguồn','Case','Màn hình','Bàn Phím','Chuột','Tai Nghe','LAPTOP','Phụ Kiện','Hàng Cũ'];
 
 async function loadGroups() {
   const snap = await get(ref(db, 'groups'));
@@ -2901,7 +2901,7 @@ window.deleteGroup = async (key, name) => {
 const catIcons = {
   'CPU':'🔲','RAM':'📊','Mainboard':'🖥️','VGA':'🎮','SSD':'💾','HDD':'💿',
   'Nguồn':'⚡','Case':'📦','Màn hình':'🖥️','Bàn Phím':'⌨️','Chuột':'🖱️',
-  'Tai Nghe':'🎧','LAPTOP':'💻','Phụ Kiện':'🔧','Hàng mới nhập':'🆕',
+  'Tai Nghe':'🎧','LAPTOP':'💻','Phụ Kiện':'🔧','Hàng Cũ':'🆕',
   'LCD - Màn hình máy tính':'🖥️','default':'🖥️'
 };
 const getIcon = (g) => catIcons[g] || catIcons['default'];
