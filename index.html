@@ -643,12 +643,11 @@ function getDashRange() {
   let from, to = Date.now();
   if (dashPeriod === 'today') {
     from = new Date(now); from.setHours(0,0,0,0); from = from.getTime();
-  } else if (dashPeriod === 'yesterday') {
-    const d = new Date(now); d.setDate(d.getDate()-1); d.setHours(0,0,0,0);
-    from = d.getTime(); to = from + 86400000 - 1;
-  } else if (dashPeriod === 'week') {
-    const d = new Date(now); d.setDate(d.getDate() - d.getDay() + 1); d.setHours(0,0,0,0);
-    from = d.getTime();
+  } else if (dashPeriod === 'year') {
+    from = new Date(now.getFullYear(), 0, 1).getTime();
+  } else if (dashPeriod === 'lastmonth') {
+    from = new Date(now.getFullYear(), now.getMonth()-1, 1).getTime();
+    to = new Date(now.getFullYear(), now.getMonth(), 1).getTime() - 1;
   } else if (dashPeriod === 'month') {
     const d = new Date(now); d.setDate(1); d.setHours(0,0,0,0);
     from = d.getTime();
@@ -659,7 +658,7 @@ function getDashRange() {
   return { from, to };
 }
 
-const dashPeriodLabels = {today:'Hôm Nay', yesterday:'Hôm Qua', week:'Tuần Này', month:'Tháng Này', all:'Tất Cả'};
+const dashPeriodLabels = {today:'Hôm Nay', year:'Cả Năm', lastmonth:'Tháng Trước', month:'Tháng Này', all:'Tất Cả'};
 
 window.setDashPeriod = (p) => {
   dashPeriod = p;
@@ -719,7 +718,7 @@ function renderDashboard(content, actions) {
       profit:dayOrders.reduce((s,o)=>s+((o.items||[]).reduce((ss,i)=>ss+(i.price-(allProducts[i.key]?.importPrice||0))*i.qty,0)),0) - dayReturnProfit };
   });
   const periodLabel = dashPeriodLabels[dashPeriod]||'Tùy Chỉnh';
-  const periods = ['today','yesterday','week','month','all'];
+  const periods = ['today','year','lastmonth','month','all'];
 
   actions.innerHTML = `
     <div class="flex-gap">
